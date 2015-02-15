@@ -901,6 +901,77 @@ func (s *S) TestMergeStruct(c *C) {
 	}
 }
 
+var mergeMapTests = `
+anchors:
+  list:
+    - &FOO { empty: notreally, flat: false, nested: { foo: merged } }
+
+# All the following maps should be equal:
+
+plain:
+  empty:
+  flat: true
+  nested:
+    foo: foo
+    bar: bar
+
+mergeBefore:
+  << : *FOO
+  empty:
+  flat: true
+  nested:
+    foo: foo
+    bar: bar
+
+mergeAfter:
+  empty:
+  flat: true
+  nested:
+    foo: foo
+    bar: bar
+  << : *FOO
+`
+
+func (s *S) TestMergeMap(c *C) {
+	var want = map[interface{}]interface{}{
+		"empty":  nil,
+		"flat":   true,
+		"nested": map[interface{}]interface{}{"foo": "foo", "bar": "bar"},
+	}
+
+	var m map[interface{}]interface{}
+	err := yaml.Unmarshal([]byte(mergeMapTests), &m)
+	c.Assert(err, IsNil)
+	for name, test := range m {
+		if name == "anchors" {
+			continue
+		}
+		c.Assert(test, DeepEquals, want, Commentf("test %q failed", name))
+	}
+}
+
+func (s *S) TestMergeMapStruct(c *C) {
+	type Nested struct {
+		Foo string
+		Bar string
+	}
+	type Data struct {
+		Flat   bool
+		Nested Nested
+	}
+	want := Data{true, Nested{"foo", "bar"}}
+
+	var m map[string]Data
+	err := yaml.Unmarshal([]byte(mergeMapTests), &m)
+	c.Assert(err, IsNil)
+	for name, test := range m {
+		if name == "anchors" {
+			continue
+		}
+		c.Assert(test, Equals, want, Commentf("test %q failed", name))
+	}
+}
+
 var unmarshalNullTests = []func() interface{}{
 	func() interface{} { var v interface{}; v = "v"; return &v },
 	func() interface{} { var s = "s"; return &s },
